@@ -129,16 +129,31 @@ export async function calcularElegibilidad() {
   }
 
   // Licencias consecutivas (ASP-09)
-  const { data: licencias } = await supabase
+  const { data: licenciasConsecutivas } = await supabase
     .from("licencias")
     .select("anio, tipo")
     .eq("practicante_id", practicante.id)
     .eq("tipo", "consecutiva")
     .order("anio", { ascending: false });
 
-  const numConsecutivas = licencias?.length ?? 0;
+  const numConsecutivas = licenciasConsecutivas?.length ?? 0;
   if (numConsecutivas < regla.licencias_consecutivas_min) {
     problemas.push(`Faltan licencias consecutivas. Tienes ${numConsecutivas}, necesitas ${regla.licencias_consecutivas_min}.`);
+  }
+
+  // Licencias alternas (RN-ELG-01)
+  const { data: licenciasAlternas } = await supabase
+    .from("licencias")
+    .select("anio, tipo")
+    .eq("practicante_id", practicante.id)
+    .eq("tipo", "alterna")
+    .order("anio", { ascending: false });
+
+  const numAlternas = licenciasAlternas?.length ?? 0;
+  // Verificar si cumple con alguno de los dos requisitos (consecutivas o alternas)
+  const cumpleLicenciasReq = numConsecutivas >= regla.licencias_consecutivas_min || numAlternas >= regla.licencias_alternas_min;
+  if (!cumpleLicenciasReq) {
+    problemas.push(`Faltan licencias (consecutivas o alternas). Tienes ${numConsecutivas} consecutivas y ${numAlternas} alternas. Necesitas ${regla.licencias_consecutivas_min} consecutivas o ${regla.licencias_alternas_min} alternas.`);
   }
 
   if (problemas.length > 0) {

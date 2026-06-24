@@ -208,7 +208,7 @@ export default function SolicitudInscripcionPage() {
   // Render
   // ───────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6">
       <div className="border-b border-[#54585B]/20 pb-6 mb-8">
         <p className="text-xs font-bold uppercase tracking-wide text-[#7A1F2A]">Inscripción a Examen</p>
         <h1 className="mt-2 text-3xl font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>

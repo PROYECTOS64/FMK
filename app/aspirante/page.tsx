@@ -35,7 +35,7 @@ export default async function PanelAspirantePage() {
   const iniciales = `${practicante.nombre?.[0] ?? ""}${practicante.apellidos?.[0] ?? ""}`.toUpperCase();
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6">
       {/* Header */}
       <div className="border-b border-[#54585B]/20 pb-6 mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
@@ -52,14 +52,14 @@ export default async function PanelAspirantePage() {
         <Link
           href="/aspirante/solicitud"
           id="btn-nueva-solicitud"
-          className="h-11 rounded border border-[#7A1F2A] bg-white px-4 text-sm font-bold text-[#7A1F2A] hover:bg-[#F8E9EB] transition flex items-center justify-center gap-2 shrink-0"
+          className="h-11 rounded border border-[#7A1F2A] bg-white px-3 sm:px-4 text-sm font-bold text-[#7A1F2A] hover:bg-[#F8E9EB] transition flex items-center justify-center gap-2 shrink-0 w-full sm:w-auto"
         >
           <span className="material-symbols-outlined text-[18px]">edit</span>
           {solicitudActiva ? "Ver solicitud" : "Nueva solicitud"}
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.6fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)]">
         <div className="space-y-6">
           {/* Status Alert */}
           {solicitudActiva && estadoInfo ? (

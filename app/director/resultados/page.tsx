@@ -6,23 +6,23 @@ export const dynamic = "force-dynamic";
 export default async function ResultadosPage({
   searchParams,
 }: {
-  searchParams: { convocatoriaId?: string };
+  searchParams: Promise<{ convocatoriaId?: string }>;
 }) {
   const supabase = await createClient();
 
-  // Obtener convocatorias activas (abiertas, cerradas, en_curso o finalizadas)
+  // ← await aquí, requerido en Next.js 16
+  const params = await searchParams;
+
   const { data: dbConvs } = await supabase
     .from("convocatorias")
     .select("id, nombre, estado")
     .order("fecha_examen", { ascending: false });
 
   const convocatorias = dbConvs || [];
-  
-  // Convocatoria seleccionada (por query param o la primera)
-  const selectedConvId = searchParams.convocatoriaId || convocatorias[0]?.id || "";
+
+  const selectedConvId = params.convocatoriaId || convocatorias[0]?.id || "";
   const selectedConv = convocatorias.find((c) => c.id === selectedConvId);
 
-  // Obtener solicitudes validadas o finalizadas para la convocatoria seleccionada
   let aspirantesList: any[] = [];
   if (selectedConvId) {
     const { data: solicitudes } = await supabase
@@ -42,7 +42,6 @@ export default async function ResultadosPage({
       .in("estado", ["validada", "programada", "finalizada", "rechazada"]);
 
     if (solicitudes) {
-      // Por cada solicitud, traer calificaciones registradas en la tabla resultados
       for (const sol of solicitudes) {
         const { data: res } = await supabase
           .from("resultados")
@@ -77,7 +76,6 @@ export default async function ResultadosPage({
 
   return (
     <div className="mx-auto max-w-7xl">
-      {/* Header */}
       <div className="border-b border-[#54585B]/20 pb-6 mb-6">
         <p className="text-xs font-bold uppercase tracking-wide text-[#7A1F2A]">Tribunal de examen</p>
         <h1 className="mt-2 text-3xl font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>
@@ -95,7 +93,6 @@ export default async function ResultadosPage({
         convocatoriaEstado={selectedConv?.estado || "borrador"}
       />
 
-      {/* Info card */}
       <div className="mt-6 rounded-lg border border-[#7A1F2A]/20 bg-[#FFF8F8] p-4 flex gap-3">
         <span className="material-symbols-outlined text-[#7A1F2A] text-xl shrink-0 mt-0.5">info</span>
         <div>

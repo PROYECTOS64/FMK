@@ -20,7 +20,7 @@ export enum Grado {
 
 export enum Rol {
   Admin = "admin",
-  Estudiante = "estudiante",
+  DirectorFMK = "director_fmk",
   Aspirante = "aspirante",
 }
 
@@ -30,10 +30,9 @@ export enum EstadoSolicitud {
   EnRevision = "en_revision",
   DocumentacionIncompleta = "documentacion_incompleta",
   Validada = "validada",
-  Programada = "programada",
-  Apto = "apto",
-  NoApto = "no_apto",
   Rechazada = "rechazada",
+  Programada = "programada",
+  Finalizada = "finalizada",
 }
 
 export enum EstadoDocumento {
@@ -86,7 +85,7 @@ export interface Convocatoria {
 export interface Documento {
   id: string;
   tipo: string;
-  url: string;
+  bucket_path: string;
   estadoValidacion: EstadoDocumento;
   fechaCarga?: Date;
 }

@@ -39,7 +39,7 @@ export default function ResultadoAspirantePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6">
       <div className="border-b border-[#54585B]/20 pb-6 mb-6">
         <p className="text-xs font-bold uppercase tracking-wide text-[#7A1F2A]">Publicación Oficial</p>
         <h1 className="mt-2 text-3xl font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>
@@ -104,8 +104,8 @@ export default function ResultadoAspirantePage() {
                   </div>
                 </div>
 
-                {/* Desglose */}
-                <div className="px-6 py-4 grid md:grid-cols-2 gap-6">
+                 {/* Desglose */}
+                 <div className="px-4 sm:px-6 py-4 grid md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="font-bold text-[#191C1D] uppercase text-xs tracking-wide mb-3">Desglose de Calificación</h3>
                     <div className="space-y-3">
