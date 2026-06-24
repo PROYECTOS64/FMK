@@ -343,16 +343,15 @@ export async function enviarSolicitud(solicitudId: string) {
     .eq("solicitud_id", solicitudId);
 
   const requiredDocs = ["DNI o Pasaporte", "Carnet de Grados firmado", "Licencias Federativas", "Fotografías (3)", "Aval del Club"];
-  const uploadedTypes = (docs ?? [])
-    .filter((d: any) => d.estado_validacion !== "rechazado")
-    .map((d: any) => d.tipo);
+const uploadedTypes = (docs ?? [])
+  .filter((d: any) => ["cargado", "validado", "en_revision"].includes(d.estado_validacion))
+  .map((d: any) => d.tipo);
 
-  const missing = requiredDocs.filter((req) => !uploadedTypes.includes(req));
+const missing = requiredDocs.filter((req) => !uploadedTypes.includes(req));
 
-  if (missing.length > 0) {
-    return { error: `Faltan documentos obligatorios: ${missing.join(", ")}.` };
-  }
-
+if (missing.length > 0) {
+  return { error: `Faltan documentos obligatorios: ${missing.join(", ")}.` };
+}
   // Submit
   const { error: updateErr } = await supabase
     .from("solicitudes")
