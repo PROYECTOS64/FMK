@@ -17,8 +17,26 @@ export default function NuevaConvocatoriaPage() {
   });
   const [error, setError] = useState("");
 
-  const grados = ["Cinturón Negro", "1º Dan", "2º Dan", "3º Dan", "4º Dan", "5º Dan", "6º Dan", "7º Dan"];
-
+  const grados = [
+  // Cinturones de color (Kyu)
+  "Cinturón Amarillo",
+  "Cinturón Naranja",
+  "Cinturón Verde",
+  "Cinturón Azul",
+  "Cinturón Marrón",
+  // Cinturón Negro y Dan
+  "Cinturón Negro",
+  "1º Dan",
+  "2º Dan",
+  "3º Dan",
+  "4º Dan",
+  "5º Dan",
+  "6º Dan",
+  "7º Dan",
+  "8º Dan",
+  "9º Dan",
+  "10º Dan",
+];
   function toggleGrado(g: string) {
     setForm((prev) => ({
       ...prev,
