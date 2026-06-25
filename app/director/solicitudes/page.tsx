@@ -127,7 +127,11 @@ export default async function SolicitudesPage() {
                       })
                     : "—";
                   return (
-                    <tr key={s.id} className="hover:bg-[#F8F9FA] transition">
+                    <tr 
+  key={s.id} 
+  className="hover:bg-[#F8F9FA] transition cursor-pointer"
+  onClick={() => window.location.href = `/director/solicitudes/${s.id}`}
+>
                       <td className="px-4 py-3">
                         <Link
                           href={`/director/solicitudes/${s.id}`}

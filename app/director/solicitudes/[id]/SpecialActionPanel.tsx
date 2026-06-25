@@ -20,17 +20,18 @@ export function SpecialActionPanel({
   importeFinal: number | null;
   situacionEspecial: string | null;
 }) {
-  const [isPending, startTransition] = useTransition();
-  const [showDispensaModal, setShowDispensaModal] = useState(false);
-  const [aprobarDispensa, setAprobarDispensa] = useState(true);
+  const [isPending, startTransition]               = useTransition();
+  const [showDispensaModal, setShowDispensaModal]  = useState(false);
+  const [aprobarDispensa, setAprobarDispensa]      = useState(true);
   const [motivoDispensaDenegada, setMotivoDispensaDenegada] = useState("");
-
   const [showConvalidaModal, setShowConvalidaModal] = useState(false);
   const [resolucionConvalida, setResolucionConvalida] = useState<"convalidado" | "convalidado_inferior" | "denegado">("convalidado");
   const [gradoOtorgado, setGradoOtorgado] = useState("");
-  const [informeJunta, setInformeJunta] = useState("");
-
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [informeJunta, setInformeJunta]   = useState("");
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
   const triggerExencion = (tipo: "campeon_mundo" | "repetidor" | "ninguna") => {
     startTransition(async () => {
@@ -50,7 +51,11 @@ export function SpecialActionPanel({
   const handleDispensa = () => {
     startTransition(async () => {
       try {
-        await resolverDispensaMedica(solicitudId, aprobarDispensa, motivoDispensaDenegada);
+        await resolverDispensaMedica(
+          solicitudId,
+          aprobarDispensa,
+          motivoDispensaDenegada
+        );
         setFeedback({
           type: "success",
           message: `Dispensa médica ${aprobarDispensa ? "aprobada" : "denegada"} con éxito.`,
@@ -67,7 +72,12 @@ export function SpecialActionPanel({
   const handleConvalidacion = () => {
     startTransition(async () => {
       try {
-        await tramitarConvalidacion(solicitudId, resolucionConvalida, gradoOtorgado, informeJunta);
+        await tramitarConvalidacion(
+          solicitudId,
+          resolucionConvalida,
+          gradoOtorgado,
+          informeJunta
+        );
         setFeedback({
           type: "success",
           message: "Trámite de convalidación guardado correctamente.",
@@ -84,25 +94,28 @@ export function SpecialActionPanel({
 
   return (
     <div className="space-y-4">
+
+      {/* Feedback */}
       {feedback && (
-        <div
-          className={`rounded border p-3 text-sm font-semibold ${
-            feedback.type === "success"
-              ? "border-[#2D6A4F]/30 bg-[#EAF5EF] text-[#2D6A4F]"
-              : "border-[#BA1A1A]/30 bg-[#FFF1F2] text-[#BA1A1A]"
-          }`}
-        >
+        <div className={`rounded border p-3 text-sm font-semibold ${
+          feedback.type === "success"
+            ? "border-[#2D6A4F]/30 bg-[#EAF5EF] text-[#2D6A4F]"
+            : "border-[#BA1A1A]/30 bg-[#FFF1F2] text-[#BA1A1A]"
+        }`}>
           {feedback.message}
         </div>
       )}
 
-      {/* Exenciones de Pago */}
+      {/* ── Gestión de Cuota / Exenciones ── */}
       <section className="rounded-lg border border-[#54585B]/20 bg-white p-5">
         <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-3">
           Gestión de Cuota / Exenciones (DIR-31 a DIR-33)
         </p>
         <p className="text-xs text-[#54585B] mb-4">
-          Importe actual: <strong>{importeFinal ?? 0} €</strong> · Estado de pago: <strong className="uppercase">{estadoPago}</strong>
+          Importe actual:{" "}
+          <strong>{importeFinal != null && importeFinal > 0 ? `${importeFinal} €` : "—"}</strong>
+          {" · "}Estado de pago:{" "}
+          <strong className="uppercase">{estadoPago}</strong>
         </p>
         <div className="flex flex-wrap gap-2">
           <button
@@ -132,38 +145,53 @@ export function SpecialActionPanel({
         </div>
       </section>
 
-      {/* Dispensas y Convalidaciones */}
-      <section className="rounded-lg border border-[#54585B]/20 bg-white p-5">
-        <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-3">
-          Dispensas Médicas y Convalidaciones (DIR-34 a DIR-38)
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setShowDispensaModal(true)}
-            className="h-9 rounded border border-[#54585B]/30 bg-white px-3 text-xs font-bold text-[#191C1D] hover:bg-[#F3F4F5] transition"
-          >
-            Tramitar Dispensa Médica
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowConvalidaModal(true)}
-            className="h-9 rounded border border-[#54585B]/30 bg-white px-3 text-xs font-bold text-[#191C1D] hover:bg-[#F3F4F5] transition"
-          >
-            Tramitar Convalidación / Méritos
-          </button>
-        </div>
-      </section>
+      {/* ── Dispensas y Convalidaciones — solo si el aspirante declaró situación especial ── */}
+      {situacionEspecial && (
+        <section className="rounded-lg border border-[#54585B]/20 bg-white p-5">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-3">
+            Dispensas Médicas y Convalidaciones (DIR-34 a DIR-38)
+          </p>
 
-      {/* Dispensa Modal */}
+          {/* Mostrar qué declaró el aspirante */}
+          <div className="mb-4 rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2">
+            <p className="text-xs text-yellow-800">
+              <span className="font-bold">Situación declarada por el aspirante:</span>{" "}
+              {situacionEspecial}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDispensaModal(true)}
+              className="h-9 rounded border border-[#54585B]/30 bg-white px-3 text-xs font-bold text-[#191C1D] hover:bg-[#F3F4F5] transition"
+            >
+              Tramitar Dispensa Médica
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConvalidaModal(true)}
+              className="h-9 rounded border border-[#54585B]/30 bg-white px-3 text-xs font-bold text-[#191C1D] hover:bg-[#F3F4F5] transition"
+            >
+              Tramitar Convalidación / Méritos
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* ── Modal Dispensa Médica ── */}
       {showDispensaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            <h3
+              className="text-lg font-bold text-[#191C1D]"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
               Tramitar Dispensa Médica
             </h3>
             <p className="mt-2 text-sm text-[#54585B]">
-              Valida el certificado médico aportado. Aprobar la dispensa adaptará los requisitos técnicos correspondientes en el examen.
+              Valida el certificado médico aportado. Aprobar la dispensa
+              adaptará los requisitos técnicos correspondientes en el examen.
             </p>
             <div className="mt-4 flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -174,7 +202,9 @@ export function SpecialActionPanel({
                   onChange={() => setAprobarDispensa(true)}
                   className="accent-[#7A1F2A]"
                 />
-                <span className="text-sm font-semibold text-[#191C1D]">Autorizar Dispensa</span>
+                <span className="text-sm font-semibold text-[#191C1D]">
+                  Autorizar Dispensa
+                </span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -184,7 +214,9 @@ export function SpecialActionPanel({
                   onChange={() => setAprobarDispensa(false)}
                   className="accent-[#7A1F2A]"
                 />
-                <span className="text-sm font-semibold text-[#BA1A1A]">Denegar Dispensa</span>
+                <span className="text-sm font-semibold text-[#BA1A1A]">
+                  Denegar Dispensa
+                </span>
               </label>
             </div>
             {!aprobarDispensa && (
@@ -206,9 +238,12 @@ export function SpecialActionPanel({
               </button>
               <button
                 type="button"
-                disabled={isPending || (!aprobarDispensa && !motivoDispensaDenegada.trim())}
+                disabled={
+                  isPending ||
+                  (!aprobarDispensa && !motivoDispensaDenegada.trim())
+                }
                 onClick={handleDispensa}
-                className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] transition"
+                className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] transition disabled:opacity-50"
               >
                 {isPending ? "Procesando..." : "Guardar Resolución"}
               </button>
@@ -217,30 +252,43 @@ export function SpecialActionPanel({
         </div>
       )}
 
-      {/* Convalidación Modal */}
+      {/* ── Modal Convalidación ── */}
       {showConvalidaModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-            <h3 className="text-lg font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>
+            <h3
+              className="text-lg font-bold text-[#191C1D]"
+              style={{ fontFamily: "Montserrat, sans-serif" }}
+            >
               Tramitar Convalidación / Méritos
             </h3>
             <div className="mt-3 space-y-3">
               <div>
-                <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">Resolución</label>
+                <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">
+                  Resolución
+                </label>
                 <select
                   value={resolucionConvalida}
-                  onChange={(e) => setResolucionConvalida(e.target.value as any)}
+                  onChange={(e) =>
+                    setResolucionConvalida(e.target.value as any)
+                  }
                   className="w-full h-10 rounded border border-[#54585B]/30 px-3 text-sm bg-white font-semibold text-[#191C1D]"
                 >
-                  <option value="convalidado">Convalidado (Aprobar grado solicitado)</option>
-                  <option value="convalidado_inferior">Convalidado con grado inferior</option>
+                  <option value="convalidado">
+                    Convalidado (Aprobar grado solicitado)
+                  </option>
+                  <option value="convalidado_inferior">
+                    Convalidado con grado inferior
+                  </option>
                   <option value="denegado">Denegar convalidación</option>
                 </select>
               </div>
 
               {resolucionConvalida === "convalidado_inferior" && (
                 <div>
-                  <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">Grado Otorgado</label>
+                  <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">
+                    Grado Otorgado
+                  </label>
                   <input
                     type="text"
                     value={gradoOtorgado}
@@ -252,7 +300,9 @@ export function SpecialActionPanel({
               )}
 
               <div>
-                <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">Informe Técnico / Justificación</label>
+                <label className="block text-xs font-bold uppercase text-[#54585B] mb-1">
+                  Informe Técnico / Justificación
+                </label>
                 <textarea
                   value={informeJunta}
                   onChange={(e) => setInformeJunta(e.target.value)}
@@ -275,7 +325,7 @@ export function SpecialActionPanel({
                 type="button"
                 disabled={isPending || !informeJunta.trim()}
                 onClick={handleConvalidacion}
-                className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] transition"
+                className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] transition disabled:opacity-50"
               >
                 {isPending ? "Procesando..." : "Guardar Resolución"}
               </button>

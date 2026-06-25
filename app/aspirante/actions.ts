@@ -235,7 +235,7 @@ export async function guardarBorradorSolicitud(formData: {
   // Get grado_solicitado from convocatoria
   const { data: conv } = await supabase
     .from("convocatorias")
-    .select("id, estado, convocatorias_grados ( grado )")
+    .select("id, estado, cuota, convocatorias_grados ( grado )")
     .eq("id", formData.convocatoriaId)
     .single();
 
@@ -277,6 +277,7 @@ export async function guardarBorradorSolicitud(formData: {
       situacion_especial: formData.situacionEspecial ?? null,
       estado: "borrador",
       estado_pago: "pendiente",
+      importe_final: (conv as any).cuota ?? 0,
     })
     .select("id")
     .single();
