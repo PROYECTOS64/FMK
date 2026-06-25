@@ -292,28 +292,6 @@ export async function guardarBorradorSolicitud(formData: {
   revalidatePath("/aspirante");
   return { success: true, solicitudId: nueva.id };
 }
-  // Create new draft
-  const { data: nueva, error: createErr } = await supabase
-    .from("solicitudes")
-    .insert({
-      practicante_id: practicante.id,
-      convocatoria_id: formData.convocatoriaId,
-      grado_solicitado: gradoSolicitado,
-      via_elegida: formData.viaElegida ?? null,
-      situacion_especial: formData.situacionEspecial ?? null,
-      estado: "borrador",
-      estado_pago: "pendiente",
-      importe_final: (conv as any).cuota ?? 0,
-    })
-    .select("id")
-    .single();
-
-  if (createErr || !nueva) return { error: "Error al crear el borrador." };
-
-  revalidatePath("/aspirante/solicitud");
-  revalidatePath("/aspirante");
-  return { success: true, solicitudId: nueva.id };
-}
 
 // ─────────────────────────────────────────────────────────────
 // ASP-14 / ASP-13: Submit solicitud (borrador → enviada)
