@@ -226,3 +226,44 @@ export async function validarFirmaCompetente(
   const res = await validarDocumento(documentoId);
   return { success: res.success, firmaValida: true, solicitudValidada: res.solicitudValidada };
 }
+
+
+//  SOLICIRUDES VALIDAS
+export async function marcarSolicitudValidada(solicitudId: string) {
+  const { supabase, userId, email } = await requireDirector();
+
+  // Verificar que todos los documentos estén validados
+  const { data: docs } = await supabase
+    .from("documentos")
+    .select("id, estado_validacion")
+    .eq("solicitud_id", solicitudId);
+
+  const todosValidados = docs && docs.length > 0 &&
+    docs.every((d: any) => d.estado_validacion === "validado");
+
+  if (!todosValidados) {
+    throw new Error("Aún hay documentos pendientes de validar.");
+  }
+
+  const { error } = await supabase
+    .from("solicitudes")
+    .update({ estado: "validada", updated_at: new Date().toISOString() })
+    .eq("id", solicitudId);
+
+  if (error) throw new Error("Error al validar la solicitud.");
+
+  // Audit log
+  const adminClient = createAdminClient();
+  await adminClient.from("audit_log").insert({
+    user_id: userId,
+    user_email: email,
+    action: "marcar_solicitud_validada",
+    entity_type: "solicitudes",
+    entity_id: solicitudId,
+    details: { manual: true },
+  });
+
+  revalidatePath(`/director/solicitudes/${solicitudId}`);
+  revalidatePath("/director/solicitudes");
+  return { success: true };
+}

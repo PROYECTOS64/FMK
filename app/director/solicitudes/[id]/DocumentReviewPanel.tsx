@@ -206,6 +206,7 @@ export function DocumentReviewPanel({
 
       {/* Feedback */}
       {feedback && (
+
         <div
           className={`mx-5 mt-4 rounded border p-3 text-sm font-semibold ${
             feedback.type === "success"
@@ -216,6 +217,44 @@ export function DocumentReviewPanel({
           {feedback.message}
         </div>
       )}
+
+      {/* Botón manual para validar solicitud cuando todos los docs están validados */}
+      {solicitudEstado === "en_revision" &&
+        documentos.length > 0 &&
+        documentos.every((d) => d.estado_validacion === "validado") && (
+          <div className="mx-5 mt-4 rounded-lg border border-[#2D6A4F]/30 bg-[#EAF5EF] p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-[#2D6A4F]">
+                ✅ Todos los documentos han sido validados
+              </p>
+              <p className="text-xs text-[#2D6A4F]/80 mt-0.5">
+                Puedes aprobar la solicitud manualmente para continuar con el proceso.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => {
+                startTransition(async () => {
+                  try {
+                    const { marcarSolicitudValidada } = await import("../actions");
+                    await marcarSolicitudValidada(solicitudId);
+                    setFeedback({
+                      type: "success",
+                      message: "✅ Solicitud marcada como validada correctamente.",
+                    });
+                  } catch (err: any) {
+                    setFeedback({ type: "error", message: err.message });
+                  }
+                  setTimeout(() => setFeedback(null), 5000);
+                });
+              }}
+              className="shrink-0 h-10 rounded bg-[#2D6A4F] px-4 text-sm font-bold text-white hover:bg-[#1B5E3A] transition disabled:opacity-50"
+            >
+              {isPending ? "Procesando..." : "Aprobar solicitud"}
+            </button>
+          </div>
+        )}
 
       {/* Document list */}
       <div className="divide-y divide-[#54585B]/10">
