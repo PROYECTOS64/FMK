@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { subirLicencia, reemplazarLicencia } from "./actions";
+import { subirLicencia, reemplazarLicencia, getLicenciaFileUrl } from "./actions";
 
 const ESTADO_BADGE: Record<string, { label: string; color: string }> = {
   pendiente:  { label: "Pendiente",  color: "bg-yellow-100 text-yellow-800" },
@@ -15,6 +15,7 @@ export function LicenciasClient({ licenciasIniciales }: { licenciasIniciales: an
   const [reemplazarId, setReemplazarId] = useState<string | null>(null);
   const [error, setError]               = useState("");
   const [exito, setExito]               = useState("");
+  const [viewingId, setViewingId]       = useState<string | null>(null);
   const [isPending, startTransition]    = useTransition();
 
   const anioActual = new Date().getFullYear();
@@ -45,6 +46,23 @@ export function LicenciasClient({ licenciasIniciales }: { licenciasIniciales: an
       window.location.reload();
     });
   }
+
+  const handleViewDoc = async (licenciaId: string) => {
+    setViewingId(licenciaId);
+    setError("");
+    setExito("");
+    try {
+      const res = await getLicenciaFileUrl(licenciaId);
+      if (res?.error) {
+        setError(res.error);
+      } else if (res?.url) {
+        window.open(res.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err: any) {
+      setError("Error al abrir el documento.");
+    }
+    setViewingId(null);
+  };
 
   return (
     <div className="space-y-6">
@@ -189,11 +207,15 @@ export function LicenciasClient({ licenciasIniciales }: { licenciasIniciales: an
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {lic.documento_url && (
-                    <a href={lic.documento_url} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 rounded-lg border border-[#54585B]/30 px-3 py-1.5 text-xs font-semibold text-[#54585B] hover:bg-gray-100 transition">
-                      <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                      Ver doc.
-                    </a>
+                    <button
+                      type="button"
+                      disabled={viewingId === lic.id}
+                      onClick={() => handleViewDoc(lic.id)}
+                      className="flex items-center gap-1 rounded-lg border border-[#54585B]/30 px-3 py-1.5 text-xs font-semibold text-[#54585B] hover:bg-gray-100 transition disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">visibility</span>
+                      {viewingId === lic.id ? "Abriendo..." : "Ver doc."}
+                    </button>
                   )}
                   {lic.estado === "rechazada" && (
                     <button onClick={() => { setReemplazarId(lic.id); setError(""); setExito(""); }}

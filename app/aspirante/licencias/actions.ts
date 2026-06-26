@@ -203,3 +203,38 @@ export async function reemplazarLicencia(formData: FormData) {
   revalidatePath("/aspirante/licencias");
   return { success: true };
 }
+
+// Obtener URL firmada para ver el documento (sin forzar descarga)
+export async function getLicenciaFileUrl(licenciaId: string) {
+  const supabase = await createClient();
+  const { data: licencia } = await supabase
+    .from("licencias")
+    .select("documento_url")
+    .eq("id", licenciaId)
+    .single();
+
+  if (!licencia?.documento_url) return { error: "Licencia no encontrada" };
+
+  // Si la URL guardada es una ruta relativa (bucket path), generamos una nueva
+  // Si ya es un enlace firmado (https://...), extraer el path
+  let bucketPath = licencia.documento_url;
+  if (bucketPath.startsWith("http")) {
+    const urlObj = new URL(bucketPath);
+    // El path típicamente es algo como /storage/v1/object/sign/licencias/[UUID]/[archivo.pdf]
+    const match = urlObj.pathname.match(/licencias\/(.+)$/);
+    if (match) bucketPath = match[1];
+  }
+
+  const { createAdminClient } = require("@/lib/supabase/server");
+  const adminStorage = createAdminClient();
+
+  const { data, error } = await adminStorage.storage
+    .from("licencias")
+    .createSignedUrl(bucketPath, 300, { download: false });
+
+  if (error || !data) {
+    return { error: "No se pudo generar el enlace. Verifica que el archivo exista." };
+  }
+
+  return { url: data.signedUrl };
+}
