@@ -6,6 +6,7 @@ import {
   rechazarDocumento,
   rechazarSolicitudDefinitiva,
   validarFirmaCompetente,
+  getDocumentoUrlDirector,
 } from "../actions";
 
 function DocStatusIcon({ estado }: { estado: string }) {
@@ -79,12 +80,32 @@ export function DocumentReviewPanel({
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(
     null
   );
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
 
   const canReview = solicitudEstado !== "rechazada" && solicitudEstado !== "validada" && solicitudEstado !== "finalizada";
 
   // Is this a carnet de cinturón marrón?
   const isCarnetMarron = (tipo: string) =>
     tipo.toLowerCase().includes("carnet") && tipo.toLowerCase().includes("grado");
+
+  // View a document (generate signed URL and open in new tab)
+  const handleViewDoc = (docId: string) => {
+    setViewingDocId(docId);
+    startTransition(async () => {
+      try {
+        const res = await getDocumentoUrlDirector(docId);
+        if ("error" in res) {
+          setFeedback({ type: "error", message: res.error });
+        } else {
+          window.open(res.url, "_blank", "noopener,noreferrer");
+        }
+      } catch (err: any) {
+        setFeedback({ type: "error", message: err.message });
+      }
+      setViewingDocId(null);
+      setTimeout(() => setFeedback(null), 5000);
+    });
+  };
 
   // DIR-08: Validate a document
   const handleValidate = (docId: string, tipo: string) => {
@@ -299,6 +320,20 @@ export function DocumentReviewPanel({
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <DocStatusIcon estado={doc.estado_validacion} />
+
+                  {/* Botón Ver — siempre visible si hay archivo subido */}
+                  {doc.bucket_path && (
+                    <button
+                      type="button"
+                      disabled={isPending && viewingDocId === doc.id}
+                      onClick={() => handleViewDoc(doc.id)}
+                      className="h-8 rounded bg-[#EEF0F1] px-3 text-xs font-bold text-[#54585B] hover:bg-[#54585B]/20 transition disabled:opacity-50 flex items-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">visibility</span>
+                      {isPending && viewingDocId === doc.id ? "Abriendo..." : "Ver"}
+                    </button>
+                  )}
+
                   {canReview &&
                     doc.estado_validacion !== "validado" &&
                     doc.estado_validacion !== "rechazado" && (

@@ -4,6 +4,50 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 /**
+ * DIR-DOC-VIEW: Generate a signed URL for viewing a document.
+ * Available to director_fmk and administrador roles.
+ */
+export async function getDocumentoUrlDirector(documentoId: string): Promise<{ url: string } | { error: string }> {
+  const supabase = await createClient();
+  const { data: userData, error: authError } = await supabase.auth.getUser();
+  if (authError || !userData?.user) return { error: "No autenticado" };
+
+  const { data: profile } = await supabase
+    .from("perfiles_usuario")
+    .select("rol")
+    .eq("user_id", userData.user.id)
+    .single();
+
+  if (!profile || !["director_fmk", "administrador"].includes(profile.rol)) {
+    return { error: "Sin permisos para ver documentos" };
+  }
+
+  // Get document bucket_path
+  const { data: doc, error: docErr } = await supabase
+    .from("documentos")
+    .select("bucket_path")
+    .eq("id", documentoId)
+    .single();
+
+  if (docErr || !doc?.bucket_path) {
+    return { error: "Documento no encontrado" };
+  }
+
+  // Generate signed URL using admin client (bypasses Storage RLS)
+  const admin = createAdminClient();
+  const { data: signed, error: signErr } = await admin.storage
+    .from("documentos-solicitudes")
+    .createSignedUrl(doc.bucket_path, 300); // 5 minutes
+
+  if (signErr || !signed?.signedUrl) {
+    console.error("Error generando signed URL (director):", signErr?.message);
+    return { error: "No se pudo generar el enlace. Verifica que el archivo exista en Storage." };
+  }
+
+  return { url: signed.signedUrl };
+}
+
+/**
  * Helper: verify the current user is a director_fmk
  */
 async function requireDirector() {

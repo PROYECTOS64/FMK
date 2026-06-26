@@ -116,13 +116,16 @@ export async function getDocumentoUrl(documentoId: string): Promise<{ url: strin
     return { error: "Sin permisos" };
   }
 
-  // Generar URL firmada válida por 60 segundos
-  const { data: signed, error: signErr } = await supabase.storage
-    .from("documentos-solicitudes")           // ← nombre de tu bucket
-    .createSignedUrl(doc.bucket_path, 60);
+  // Generar URL firmada válida por 5 minutos usando admin client
+  // (el admin client bypasa las políticas RLS de Storage)
+  const admin = createAdminClient();
+  const { data: signed, error: signErr } = await admin.storage
+    .from("documentos-solicitudes")
+    .createSignedUrl(doc.bucket_path, 300);
 
   if (signErr || !signed?.signedUrl) {
-    return { error: "No se pudo generar el enlace" };
+    console.error("Error generando signed URL:", signErr?.message);
+    return { error: "No se pudo generar el enlace. Verifica que el archivo se haya subido correctamente." };
   }
 
   return { url: signed.signedUrl };
@@ -477,8 +480,8 @@ export async function subirDocumento(formData: FormData) {
     .upload(bucketPath, file, { upsert: true });
 
   if (storageErr) {
-    // Gracefully fall back — still register the document row even if bucket not configured
-    console.warn("Storage upload failed (may not be configured):", storageErr.message);
+    console.error("Storage upload failed:", storageErr.message);
+    return { error: `Error al subir el archivo: ${storageErr.message}` };
   }
 
   // Check if document row already exists (for replacement — ASP-22)
