@@ -8,6 +8,7 @@ import {
   getConvocatoriasDisponibles,
   calcularElegibilidad,
   getDashboardData,
+  getDocumentoUrl
 } from "@/app/aspirante/actions";
 
 const PASOS = ["Elegibilidad", "Convocatoria", "Documentos", "Vía", "Declaración", "Revisión"];
