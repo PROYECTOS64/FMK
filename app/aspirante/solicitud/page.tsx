@@ -190,7 +190,7 @@ export default function SolicitudInscripcionPage() {
     }
     clearMessages();
     startTransition(async () => {
-      const result = await enviarSolicitud(solicitudId);
+      const result = await enviarSolicitud(solicitudId, viaElegida || undefined);
       if ("error" in result) {
         setError(result.error ?? "Error al enviar");
         return;

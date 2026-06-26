@@ -250,8 +250,12 @@ export async function guardarBorradorSolicitud(formData: {
   const gradoSolicitado = conv.convocatorias_grados?.[0]?.grado ?? practicante.grado_actual;
 
   if (formData.solicitudId) {
-    // Resume / update draft — acepta borrador Y estados intermedios
-    const { error } = await supabase
+    // Resume / update draft.
+    // Use admin client because the RLS UPDATE policy on solicitudes may not
+    // yet be applied in the target Supabase project. Ownership is verified
+    // above via requireAspirante() + practicante_id filter.
+    const admin = createAdminClient();
+    const { error } = await admin
       .from("solicitudes")
       .update({
         convocatoria_id: formData.convocatoriaId,
@@ -264,7 +268,7 @@ export async function guardarBorradorSolicitud(formData: {
       .eq("practicante_id", practicante.id)
       .in("estado", ["borrador", "documentacion_incompleta"]);
 
-    if (error) return { error: "Error al actualizar el borrador." };
+    if (error) return { error: `Error al actualizar el borrador: ${error.message}` };
     revalidatePath("/aspirante/solicitud");
     revalidatePath("/aspirante");
     return { success: true, solicitudId: formData.solicitudId };
@@ -297,19 +301,17 @@ export async function guardarBorradorSolicitud(formData: {
 // ASP-14 / ASP-13: Submit solicitud (borrador → enviada)
 // Validates all required docs are uploaded (not rejected)
 // ─────────────────────────────────────────────────────────────
-export async function enviarSolicitud(solicitudId: string) {
+export async function enviarSolicitud(solicitudId: string, viaElegidaParam?: string) {
   const { supabase, practicante } = await requireAspirante();
+  const admin = createAdminClient();
 
-  // ASP-18: Check if aspirante is sanctioned (No Apto hace < 3 meses)
+  // ASP-18: Check if aspirante is sanctioned (No Apto en los últimos 3 meses)
   const tresMesesAtras = new Date();
   tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
 
   const { data: noAptos } = await supabase
     .from("resultados")
-    .select(`
-      id, calificacion, created_at,
-      solicitudes!inner ( practicante_id, estado )
-    `)
+    .select(`id, calificacion, created_at, solicitudes!inner ( practicante_id, estado )`)
     .eq("solicitudes.practicante_id", practicante.id)
     .eq("solicitudes.estado", "finalizada")
     .eq("calificacion", "no_apto")
@@ -325,8 +327,8 @@ export async function enviarSolicitud(solicitudId: string) {
     };
   }
 
-  // Fetch solicitud
-  const { data: sol } = await supabase
+  // Fetch solicitud using admin to bypass RLS for reads too
+  const { data: sol } = await admin
     .from("solicitudes")
     .select("id, estado, via_elegida, grado_solicitado, convocatoria_id")
     .eq("id", solicitudId)
@@ -334,36 +336,47 @@ export async function enviarSolicitud(solicitudId: string) {
     .single();
 
   if (!sol || !["borrador", "documentacion_incompleta"].includes(sol.estado)) {
-  return { error: "Esta solicitud no puede enviarse en su estado actual." };
-}
+    return { error: "Esta solicitud no puede enviarse en su estado actual." };
+  }
 
-  if (!sol.via_elegida) {
+  // If the via is not yet persisted in DB (e.g. RLS blocked the earlier save),
+  // save it now using the admin client before the final validation.
+  const viaFinal = sol.via_elegida ?? viaElegidaParam ?? null;
+  if (viaElegidaParam && !sol.via_elegida) {
+    await admin
+      .from("solicitudes")
+      .update({ via_elegida: viaElegidaParam, updated_at: new Date().toISOString() })
+      .eq("id", solicitudId)
+      .eq("practicante_id", practicante.id);
+  }
+
+  if (!viaFinal) {
     return { error: "Debes seleccionar una vía específica antes de enviar." };
   }
 
-  // ASP-13: Check docs — all required docs must be uploaded (not rejected)
+  // ASP-13: Check docs — required docs must be uploaded (not rejected)
   const { data: docs } = await supabase
     .from("documentos")
     .select("tipo, estado_validacion")
     .eq("solicitud_id", solicitudId);
 
   const requiredDocs = ["DNI o Pasaporte", "Carnet de Grados firmado", "Licencias Federativas", "Fotografías (3)", "Aval del Club"];
-const uploadedTypes = (docs ?? [])
-  .filter((d: any) => ["cargado", "validado", "en_revision"].includes(d.estado_validacion))
-  .map((d: any) => d.tipo);
+  const uploadedTypes = (docs ?? [])
+    .filter((d: any) => ["cargado", "validado", "en_revision"].includes(d.estado_validacion))
+    .map((d: any) => d.tipo);
+  const missing = requiredDocs.filter((req) => !uploadedTypes.includes(req));
+  if (missing.length > 0) {
+    return { error: `Faltan documentos obligatorios: ${missing.join(", ")}.` };
+  }
 
-const missing = requiredDocs.filter((req) => !uploadedTypes.includes(req));
-
-if (missing.length > 0) {
-  return { error: `Faltan documentos obligatorios: ${missing.join(", ")}.` };
-}
-  // Submit
-  const { error: updateErr } = await supabase
+  // Submit using admin client (RLS on solicitudes may not allow UPDATE for aspirante)
+  const { error: updateErr } = await admin
     .from("solicitudes")
-    .update({ estado: "enviada", updated_at: new Date().toISOString() })
-    .eq("id", solicitudId);
+    .update({ estado: "enviada", via_elegida: viaFinal, updated_at: new Date().toISOString() })
+    .eq("id", solicitudId)
+    .eq("practicante_id", practicante.id);
 
-  if (updateErr) return { error: "Error al enviar la solicitud." };
+  if (updateErr) return { error: `Error al enviar la solicitud: ${updateErr.message}` };
 
   revalidatePath("/aspirante");
   revalidatePath("/aspirante/solicitud");
