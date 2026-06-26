@@ -358,8 +358,22 @@ export default function SolicitudInscripcionPage() {
                 const docExist = docsMap[tipo];
                 const estadoColor = docExist ? DOC_ESTADO_COLORS[docExist.estado_validacion] ?? "text-[#54585B]" : "text-[#54585B]";
                 const isRechazado = docExist?.estado_validacion === "rechazado";
+
+                async function handleVerDoc() {
+                  if (!docExist?.id) return;
+                  const res = await getDocumentoUrl(docExist.id);
+                  if ("error" in res) {
+                    setError(res.error);
+                  } else {
+                    window.open(res.url, "_blank", "noopener,noreferrer");
+                  }
+                }
+
                 return (
-                  <div key={tipo} className={`rounded border p-4 ${isRechazado ? "border-[#BA1A1A]/30 bg-[#FFF1F2]" : "border-[#54585B]/15 bg-[#F8F9FA]"}`}>
+                  <div
+                    key={tipo}
+                    className={`rounded border p-4 ${isRechazado ? "border-[#BA1A1A]/30 bg-[#FFF1F2]" : "border-[#54585B]/15 bg-[#F8F9FA]"}`}
+                  >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div>
                         <span className="text-sm font-semibold text-[#191C1D]">{tipo}</span>
@@ -372,29 +386,46 @@ export default function SolicitudInscripcionPage() {
                           <p className="text-xs text-[#BA1A1A] mt-1">Motivo: {docExist.comentarios_revision}</p>
                         )}
                       </div>
-                      {!solicitudEnviada && (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="file"
-                            accept=".pdf,.jpg,.jpeg,.png"
-                            id={`upload-${tipo}`}
-                            className="hidden"
-                            ref={(el) => { uploadRefs.current[tipo] = el; }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleUpload(tipo, file);
-                            }}
-                          />
+
+                      <div className="flex items-center gap-2">
+                        {/* Botón Ver — solo si ya hay archivo subido */}
+                        {docExist?.ruta_archivo && (
                           <button
                             type="button"
-                            onClick={() => uploadRefs.current[tipo]?.click()}
+                            onClick={handleVerDoc}
                             disabled={isPending}
-                            className="py-2 px-4 rounded text-sm font-bold bg-[#EAF5EF] text-[#2D6A4F] hover:bg-[#2D6A4F]/20 transition disabled:opacity-50"
+                            className="py-2 px-4 rounded text-sm font-bold bg-[#EEF0F1] text-[#54585B] hover:bg-[#54585B]/20 transition disabled:opacity-50 flex items-center gap-1"
                           >
-                            {docExist ? "Reemplazar" : "Cargar"}
+                            <span className="material-symbols-outlined text-[15px]">visibility</span>
+                            Ver
                           </button>
-                        </div>
-                      )}
+                        )}
+
+                        {/* Botón Cargar / Reemplazar */}
+                        {!solicitudEnviada && (
+                          <>
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              id={`upload-${tipo}`}
+                              className="hidden"
+                              ref={(el) => { uploadRefs.current[tipo] = el; }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUpload(tipo, file);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => uploadRefs.current[tipo]?.click()}
+                              disabled={isPending}
+                              className="py-2 px-4 rounded text-sm font-bold bg-[#EAF5EF] text-[#2D6A4F] hover:bg-[#2D6A4F]/20 transition disabled:opacity-50"
+                            >
+                              {docExist ? "Reemplazar" : "Cargar"}
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

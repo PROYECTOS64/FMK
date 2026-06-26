@@ -73,7 +73,7 @@ export async function getDashboardData() {
   if (solicitudActiva) {
     const { data: docs } = await supabase
       .from("documentos")
-      .select("id, tipo, estado_validacion, comentarios_revision, created_at")
+      .select("id, tipo, estado_validacion, comentarios_revision, ruta_archivo, created_at")
       .eq("solicitud_id", solicitudActiva.id);
     documentos = docs ?? [];
   }
@@ -86,6 +86,49 @@ export async function getDashboardData() {
     documentos,
   };
 }
+
+
+
+
+
+export async function getDocumentoUrl(documentoId: string): Promise<{ url: string } | { error: string }> {
+  const { supabase, practicante } = await requireAspirante();
+
+  // Obtener la ruta del archivo, verificando que pertenece al practicante
+  const { data: doc, error } = await supabase
+    .from("documentos")
+    .select("ruta_archivo, solicitud_id")
+    .eq("id", documentoId)
+    .single();
+
+  if (error || !doc?.ruta_archivo) {
+    return { error: "Documento no encontrado" };
+  }
+
+  // Verificar que la solicitud pertenece al practicante autenticado
+  const { data: sol } = await supabase
+    .from("solicitudes")
+    .select("practicante_id")
+    .eq("id", doc.solicitud_id)
+    .single();
+
+  if (sol?.practicante_id !== practicante.id) {
+    return { error: "Sin permisos" };
+  }
+
+  // Generar URL firmada válida por 60 segundos
+  const { data: signed, error: signErr } = await supabase.storage
+    .from("documentos")           // ← nombre de tu bucket
+    .createSignedUrl(doc.ruta_archivo, 60);
+
+  if (signErr || !signed?.signedUrl) {
+    return { error: "No se pudo generar el enlace" };
+  }
+
+  return { url: signed.signedUrl };
+}
+
+
 
 // ─────────────────────────────────────────────────────────────
 // ASP-06–ASP-10: Compute elegibility for the next grade
