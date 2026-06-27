@@ -110,11 +110,26 @@ export function AspiranteLayoutClient({ children }: { children: React.ReactNode 
           ))}
         </nav>
 
-        <div className="flex justify-end mb-4">
-          <NotificacionesMenu />
+        {/* UserCard + notificaciones en la misma fila */}
+        <div className="mt-4 flex items-center gap-2 rounded-lg bg-white border border-[#54585B]/20 p-3">
+          <div className="h-8 w-8 rounded-full bg-[#7A1F2A] flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {iniciales}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-[#191C1D] truncate">
+              {userName || "Cargando..."}
+            </p>
+            <p className="text-xs text-[#54585B] truncate">{userEmail}</p>
+          </div>
+          <NotificacionesMenu direction="up" />
+          <form action={logout} className="ml-1">
+            <button type="submit" aria-label="Cerrar sesión">
+              <span className="material-symbols-outlined text-[18px] text-[#54585B] hover:text-[#7A1F2A]">
+                logout
+              </span>
+            </button>
+          </form>
         </div>
-
-        <UserCard />
       </aside>
 
       {/* ── Mobile drawer ── */}

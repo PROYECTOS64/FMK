@@ -121,7 +121,7 @@ function NotifCard({
 }
 
 // ── Componente principal ────────────────────────────────────────────────────
-export function NotificacionesMenu() {
+export function NotificacionesMenu({ direction = "down" }: { direction?: "up" | "down" }) {
   const router                                    = useRouter();
   const [open, setOpen]                           = useState(false);
   const [tab, setTab]                             = useState<"nuevas" | "historial">("nuevas");
@@ -252,7 +252,7 @@ export function NotificacionesMenu() {
 
       {/* ── Panel desplegable ─────────────────────────────────────────────── */}
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-80 sm:w-96 rounded-xl border border-[#54585B]/20 bg-white shadow-xl overflow-hidden">
+        <div className={`absolute right-0 z-50 w-80 sm:w-96 rounded-xl border border-[#54585B]/20 bg-white shadow-xl overflow-hidden ${direction === "up" ? "bottom-11" : "top-11"}`}>
 
           {/* Cabecera */}
           <div className="flex items-center justify-between border-b border-[#54585B]/15 px-4 py-3 bg-[#F8F9FA]">
