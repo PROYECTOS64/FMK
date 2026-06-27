@@ -4,6 +4,22 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
+// Botón de impresión como Server Component wrapper con client island
+function PrintButtonWrapper() {
+  // Usamos un form para evitar onClick en server component
+  return (
+    <form action="javascript:window.print()">
+      <button
+        type="submit"
+        className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] flex items-center gap-2"
+      >
+        <span className="material-symbols-outlined text-[18px]">print</span>
+        Imprimir / Guardar PDF
+      </button>
+    </form>
+  );
+}
+
 export default async function ActaPage({
   params,
 }: {
@@ -66,15 +82,11 @@ export default async function ActaPage({
       const especif = resList.find((r: any) => r.bloque === "especifico");
       const esApto  = comun?.calificacion === "apto" && (especif?.calificacion === "apto" || !especif);
       const pract   = sol.practicantes as any;
-      const edad    = pract?.fecha_nacimiento
-        ? Math.floor((Date.now() - new Date(pract.fecha_nacimiento).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-        : null;
 
       return {
         id:              sol.id,
         nombre:          pract ? `${pract.nombre} ${pract.apellidos}` : "—",
         dni:             pract?.dni ?? "—",
-        edad,
         club:            pract?.clubes?.nombre ?? "—",
         gradoActual:     pract?.grado_actual ?? "—",
         gradoSolicitado: sol.grado_solicitado,
@@ -101,7 +113,7 @@ export default async function ActaPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      {/* Barra acciones — no se imprime */}
+      {/* Barra acciones */}
       <div className="flex items-center justify-between mb-6 print:hidden">
         <Link
           href="/director/resultados"
@@ -110,13 +122,7 @@ export default async function ActaPage({
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Volver a resultados
         </Link>
-        <button
-          onClick={() => window.print()}
-          className="h-10 rounded bg-[#7A1F2A] px-4 text-sm font-bold text-white hover:bg-[#5B0616] flex items-center gap-2"
-        >
-          <span className="material-symbols-outlined text-[18px]">print</span>
-          Imprimir / Guardar PDF
-        </button>
+        <PrintButtonWrapper />
       </div>
 
       {/* ACTA */}
@@ -150,7 +156,7 @@ export default async function ActaPage({
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-1">Sede</p>
-            <p className="font-bold text-[#191C1D]">{conv.sede ?? "—"}</p>
+            <p className="font-bold text-[#191C1D]">{(conv as any).sede ?? "—"}</p>
           </div>
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-1">Estado del acta</p>
@@ -193,7 +199,6 @@ export default async function ActaPage({
           <h2 className="text-sm font-bold uppercase tracking-wide text-[#54585B] mb-3 border-b border-[#54585B]/15 pb-1">
             Resultados ({aspirantes.length} presentados)
           </h2>
-
           {aspirantes.length === 0 ? (
             <p className="text-sm text-[#54585B] py-4">
               No hay aspirantes calificados en esta convocatoria todavía.
