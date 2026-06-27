@@ -121,7 +121,7 @@ export function AspiranteLayoutClient({ children }: { children: React.ReactNode 
             </p>
             <p className="text-xs text-[#54585B] truncate">{userEmail}</p>
           </div>
-          <NotificacionesMenu direction="up" />
+          <NotificacionesMenu  />
           <form action={logout} className="ml-1">
             <button type="submit" aria-label="Cerrar sesión">
               <span className="material-symbols-outlined text-[18px] text-[#54585B] hover:text-[#7A1F2A]">
