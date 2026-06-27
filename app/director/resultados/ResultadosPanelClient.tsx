@@ -218,9 +218,20 @@ export function ResultadosPanelClient({
             </>
           )}
           {isFinalizada && (
-            <span className="h-11 inline-flex items-center rounded border border-[#2D6A4F]/30 bg-[#EAF5EF] px-4 text-sm font-bold text-[#2D6A4F]">
-              Acta Oficial Firmada y Cerrada
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="h-11 inline-flex items-center rounded border border-[#2D6A4F]/30 bg-[#EAF5EF] px-4 text-sm font-bold text-[#2D6A4F]">
+                Acta Oficial Firmada y Cerrada
+              </span>
+              <a
+                href={`/director/resultados/acta/${selectedConvId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-11 rounded border border-[#7A1F2A] px-4 text-sm font-bold text-[#7A1F2A] hover:bg-[#F8E9EB] flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">description</span>
+                Ver Acta
+              </a>
+            </div>
           )}
         </div>
       </div>
