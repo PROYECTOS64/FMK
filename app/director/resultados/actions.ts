@@ -255,7 +255,7 @@ export async function generarActaOficial(convocatoriaId: string) {
   // Obtener todas las solicitudes de la convocatoria
   const { data: solicitudes } = await supabase
     .from("solicitudes")
-    .select("id, practicante_id, grado_solicitado, practicantes(user_id)")
+    .select("id, practicante_id, grado_solicitado, practicantes(user_id, nombre, apellidos)")
     .eq("convocatoria_id", convocatoriaId) as any;
 
   if (!solicitudes || solicitudes.length === 0) {
@@ -264,18 +264,37 @@ export async function generarActaOficial(convocatoriaId: string) {
 
   const adminClient = createAdminClient();
 
+  // ── Validación previa: todos deben tener B. Común calificado ──
+  const sinCalificar: string[] = [];
+  for (const sol of solicitudes) {
+    const { data: resVal } = await adminClient
+      .from("resultados")
+      .select("bloque, calificacion")
+      .eq("solicitud_id", sol.id);
+    const comunVal = (resVal || []).find((r: any) => r.bloque === "comun")?.calificacion;
+    if (!comunVal) {
+      const pract = (sol as any).practicantes;
+      sinCalificar.push(pract ? `${pract.nombre ?? ""} ${pract.apellidos ?? ""}`.trim() : sol.id);
+    }
+  }
+  if (sinCalificar.length > 0) {
+    throw new Error(
+      `No se puede firmar el acta. Los siguientes aspirantes no tienen el Bloque Común calificado: ${sinCalificar.join(", ")}. Registra todas las calificaciones antes de firmar.`
+    );
+  }
+
   for (const sol of solicitudes) {
     // Obtener resultados de la solicitud
-    const { data: res } = await supabase
+    const { data: res } = await adminClient
       .from("resultados")
       .select("bloque, calificacion")
       .eq("solicitud_id", sol.id);
 
     const resultList = res || [];
-    const comun = resultList.find((r) => r.bloque === "comun")?.calificacion;
-    const espec = resultList.find((r) => r.bloque === "especifico")?.calificacion;
+    const comun = resultList.find((r: any) => r.bloque === "comun")?.calificacion;
+    const espec = resultList.find((r: any) => r.bloque === "especifico")?.calificacion;
 
-    const esAptoGlobal = comun === "apto" && (espec === "apto" || espec === undefined); // Opcional específico si está exento
+    const esAptoGlobal = comun === "apto" && (espec === "apto" || espec === undefined);
 
     // Actualizar resultados a definitivos
     await supabase
