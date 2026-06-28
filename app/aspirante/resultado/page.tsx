@@ -14,63 +14,47 @@ function resolverResultado(sol: any): {
   esDefinitivo: boolean;
   pendiente: boolean;
 } {
-  const tieneResultados = sol.resultados?.length > 0;
-  const bloqueComun     = sol.resultados?.find((r: any) => r.bloque === "comun");
-  const bloqueEsp       = sol.resultados?.find((r: any) => r.bloque === "especifico");
-  const esDefinitivo    = sol.resultados?.some((r: any) => r.estado_definitivo) ?? false;
+  const resList     = sol.resultados ?? [];
+  const bloqueComun = resList.find((r: any) => r.bloque === "comun");
+  const bloqueEsp   = resList.find((r: any) => r.bloque === "especifico");
 
-  // Acta firmada → estado definitivo
-  if (sol.estado === "finalizada") {
+  // PRIMERO: si hay bloques calificados, el resultado viene de los bloques
+  // independientemente del estado de la solicitud
+  if (bloqueComun?.calificacion) {
     const aptoBloques =
-      bloqueComun?.calificacion === "apto" &&
+      bloqueComun.calificacion === "apto" &&
       (bloqueEsp?.calificacion === "apto" || !bloqueEsp);
-    return {
-      etiqueta:     aptoBloques ? "APTO" : "NO APTO",
-      esApto:       aptoBloques,
-      esNoApto:     !aptoBloques,
-      esProvisional: false,
-      esDefinitivo:  true,
-      pendiente:     false,
-    };
-  }
 
-  // "rechazada" = acta firmada NO APTO
-  if (sol.estado === "rechazada") {
+    const esDefinitivo =
+      ["finalizada", "rechazada"].includes(sol.estado) ||
+      resList.some((r: any) => r.estado_definitivo === true);
+
     return {
-      etiqueta:     "NO APTO",
-      esApto:       false,
-      esNoApto:     true,
+      etiqueta:      aptoBloques ? "APTO" : "NO APTO",
+      esApto:        aptoBloques,
+      esNoApto:      !aptoBloques,
       esProvisional: !esDefinitivo,
       esDefinitivo,
       pendiente:     false,
     };
   }
 
-  // Resultados provisionales publicados (en_curso, validada, programada)
-  if (tieneResultados) {
-    const aptoBloques =
-      bloqueComun?.calificacion === "apto" &&
-      (bloqueEsp?.calificacion === "apto" || !bloqueEsp);
+  // SEGUNDO: sin bloques calificados, mirar el estado
+  if (["finalizada", "rechazada"].includes(sol.estado)) {
     return {
-      etiqueta:     aptoBloques ? "APTO (provisional)" : "NO APTO (provisional)",
-      esApto:       aptoBloques,
-      esNoApto:     !aptoBloques,
-      esProvisional: true,
-      esDefinitivo:  false,
-      pendiente:     false,
+      etiqueta: "NO APTO", esApto: false, esNoApto: true,
+      esProvisional: false, esDefinitivo: true, pendiente: false,
     };
   }
 
-  // Sin resultados aún
+  // Sin resultados publicados aún
   return {
-    etiqueta:     "PENDIENTE",
-    esApto:       false,
-    esNoApto:     false,
-    esProvisional: false,
-    esDefinitivo:  false,
-    pendiente:     true,
+    etiqueta: "PENDIENTE", esApto: false, esNoApto: false,
+    esProvisional: false, esDefinitivo: false, pendiente: true,
   };
 }
+
+
 
 // ── Página ─────────────────────────────────────────────────────────────────
 export default function ResultadoAspirantePage() {
