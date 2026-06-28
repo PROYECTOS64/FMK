@@ -1,244 +1,243 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { getCatalogo, getTemario } from "@/app/aspirante/actions";
+import Link from "next/link";
+import { useState, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { createConvocatoria, getGradosDisponibles } from "../actions";
 
-type Tab = "estilos" | "katas" | "temario";
-
-const GRADOS_TEMARIO = [
+const GRADOS_FALLBACK = [
+  "Cinturón Amarillo", "Cinturón Naranja", "Cinturón Verde",
+  "Cinturón Azul", "Cinturón Marrón", "Cinturón Negro",
   "1º Dan", "2º Dan", "3º Dan", "4º Dan", "5º Dan",
   "6º Dan", "7º Dan", "8º Dan", "9º Dan", "10º Dan",
 ];
 
-export default function CatalogoPage() {
-  const [tab, setTab] = useState<Tab>("estilos");
+export default function NuevaConvocatoriaPage() {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  // Estilos
-  const [estilos, setEstilos] = useState<any[]>([]);
-  const [estiloSeleccionado, setEstiloSeleccionado] = useState<string>("");
-  const [katas, setKatas] = useState<any[]>([]);
+  const [gradosDisponibles, setGradosDisponibles] = useState<string[]>([]);
+  const [form, setForm] = useState({
+    grados: [] as string[],
+    fechaExamen: "",
+    sede: "",
+    fechaLimite: "",
+    nombre: "",
+  });
+  const [error, setError] = useState<string | null>(null);
 
-  // Temario
-  const [gradoTemario, setGradoTemario] = useState<string>("1º Dan");
-  const [preguntas, setPreguntas] = useState<any[]>([]);
-  const [expanded, setExpanded] = useState<string | null>(null);
-
-  // Cargar estilos al montar
   useEffect(() => {
-    startTransition(async () => {
-      const data = await getCatalogo();
-      setEstilos(data.estilos);
-    });
+    getGradosDisponibles()
+      .then((g) => setGradosDisponibles(g.length > 0 ? g : GRADOS_FALLBACK))
+      .catch(() => setGradosDisponibles(GRADOS_FALLBACK));
   }, []);
 
-  // Cargar katas cuando cambia el estilo
-  useEffect(() => {
-    if (!estiloSeleccionado) return;
-    startTransition(async () => {
-      const data = await getCatalogo(estiloSeleccionado);
-      setKatas(data.katas);
-    });
-  }, [estiloSeleccionado]);
+  function toggleGrado(g: string) {
+    setForm((prev) => ({
+      ...prev,
+      grados: prev.grados.includes(g)
+        ? prev.grados.filter((x) => x !== g)
+        : [...prev.grados, g],
+    }));
+  }
 
-  // Cargar temario cuando cambia el grado
-  useEffect(() => {
-    if (tab !== "temario") return;
+  function handleSubmit() {
+    setError(null);
+    if (!form.fechaExamen || !form.sede || !form.fechaLimite || form.grados.length === 0) {
+      setError("Completa todos los campos obligatorios y selecciona al menos un grado.");
+      return;
+    }
     startTransition(async () => {
-      const data = await getTemario(gradoTemario);
-      setPreguntas(data.preguntas);
+      try {
+        await createConvocatoria({
+          grados: form.grados,
+          fechaExamen: form.fechaExamen,
+          sede: form.sede,
+          fechaLimiteInscripcion: form.fechaLimite,
+          nombre: form.nombre || undefined,
+        });
+        router.push("/director/convocatorias");
+      } catch (err: any) {
+        setError(err.message ?? "Error al crear la convocatoria.");
+      }
     });
-  }, [tab, gradoTemario]);
-
-  const basicKatas = katas.filter((k: any) => k.nivel === "básico");
-  const superiorKatas = katas.filter((k: any) => k.nivel === "superior");
+  }
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-3xl">
       {/* Header */}
-      <div className="border-b border-[#54585B]/20 pb-6 mb-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-[#7A1F2A]">Base de conocimiento</p>
-        <h1 className="mt-2 text-3xl font-bold text-[#191C1D]" style={{ fontFamily: "Montserrat, sans-serif" }}>
-          Catálogo de estilos, katas y temarios
-        </h1>
-        <p className="mt-1 text-sm text-[#54585B]">
-          Estilos reconocidos · Katas parametrizados por grado · Temario en formato Q&A
-        </p>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 border-b border-[#54585B]/20">
-        {(["estilos", "katas", "temario"] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2.5 text-sm font-bold border-b-2 transition -mb-px ${
-              tab === t
-                ? "border-[#7A1F2A] text-[#7A1F2A]"
-                : "border-transparent text-[#54585B] hover:text-[#191C1D]"
-            }`}
+      <div className="flex items-center gap-4 border-b border-[#54585B]/20 pb-6 mb-8">
+        <Link
+          href="/director/convocatorias"
+          className="flex items-center gap-1 text-sm font-semibold text-[#54585B] hover:text-[#191C1D]"
+        >
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Volver
+        </Link>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#7A1F2A]">
+            Departamento de Grados
+          </p>
+          <h1
+            className="mt-1 text-2xl font-bold text-[#191C1D]"
+            style={{ fontFamily: "Montserrat, sans-serif" }}
           >
-            {t === "estilos" ? "Estilos" : t === "katas" ? "Katas" : "Temario"}
-          </button>
-        ))}
+            Nueva Convocatoria
+          </h1>
+        </div>
       </div>
 
-      {/* ─── Estilos ─── */}
-      {tab === "estilos" && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {isPending && estilos.length === 0 ? (
-            <p className="col-span-3 text-sm text-[#54585B] flex items-center gap-2">
-              <span className="material-symbols-outlined animate-spin text-[#7A1F2A]">progress_activity</span>
-              Cargando estilos…
+      {error && (
+        <div className="mb-6 rounded border border-[#BA1A1A]/30 bg-[#FFF1F2] px-4 py-3 flex gap-2">
+          <span className="material-symbols-outlined text-[#BA1A1A] text-[18px] shrink-0 mt-0.5">error</span>
+          <p className="text-sm text-[#BA1A1A]">{error}</p>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {/* Nombre */}
+        <div className="rounded-lg border border-[#54585B]/20 bg-white p-6">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[#54585B] mb-4">
+            Identificación
+          </h2>
+          <div>
+            <label className="block text-sm font-semibold text-[#191C1D] mb-1.5">
+              Nombre de la convocatoria <span className="text-[#54585B] font-normal">(opcional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+              placeholder="Ej. Convocatoria 2026 - 1ª Grados"
+              className="w-full h-10 rounded border border-[#54585B]/30 px-3 text-sm text-[#191C1D] focus:outline-none focus:ring-2 focus:ring-[#7A1F2A]/30"
+            />
+            <p className="text-xs text-[#54585B] mt-1">
+              Si no se indica, se generará automáticamente.
             </p>
-          ) : estilos.length === 0 ? (
-            <div className="col-span-3 rounded-lg border border-[#54585B]/20 bg-white p-8 text-center">
-              <span className="material-symbols-outlined text-4xl text-[#54585B]/40 mb-3">menu_book</span>
-              <p className="text-sm text-[#54585B]">No hay estilos registrados en el catálogo todavía.</p>
+          </div>
+        </div>
+
+        {/* Fechas y sede */}
+        <div className="rounded-lg border border-[#54585B]/20 bg-white p-6">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[#54585B] mb-4">
+            Fechas y Sede <span className="text-[#BA1A1A]">*</span>
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-semibold text-[#191C1D] mb-1.5">
+                Fecha del examen <span className="text-[#BA1A1A]">*</span>
+              </label>
+              <input
+                type="date"
+                value={form.fechaExamen}
+                onChange={(e) => setForm({ ...form, fechaExamen: e.target.value })}
+                className="w-full h-10 rounded border border-[#54585B]/30 px-3 text-sm text-[#191C1D] focus:outline-none focus:ring-2 focus:ring-[#7A1F2A]/30"
+              />
             </div>
-          ) : (
-            estilos.map((e: any) => (
-              <article key={e.id} className="rounded-lg border border-[#54585B]/20 bg-white p-4 hover:border-[#7A1F2A]/30 transition">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded bg-[#F8E9EB] flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#7A1F2A] text-xl">sports_martial_arts</span>
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-[#191C1D]">{e.nombre}</h3>
-                    {e.fundador && <p className="text-xs text-[#54585B]">Fundador: {e.fundador}</p>}
-                  </div>
-                </div>
-                {e.caracteristicas && (
-                  <p className="text-sm text-[#191C1D] mt-3 leading-relaxed">{e.caracteristicas}</p>
-                )}
-              </article>
-            ))
-          )}
-        </div>
-      )}
-
-      {/* ─── Katas ─── */}
-      {tab === "katas" && (
-        <div className="space-y-6">
-          <div>
-            <label className="text-sm font-semibold text-[#191C1D] block mb-2">Seleccionar Estilo</label>
-            <select
-              value={estiloSeleccionado}
-              onChange={(e) => setEstiloSeleccionado(e.target.value)}
-              className="h-10 rounded border border-[#54585B]/30 bg-white px-3 text-sm font-semibold text-[#191C1D]"
-            >
-              <option value="">-- Elige un estilo --</option>
-              {estilos.map((est: any) => (
-                <option key={est.id} value={est.id}>{est.nombre}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-sm font-semibold text-[#191C1D] mb-1.5">
+                Fecha límite de inscripción <span className="text-[#BA1A1A]">*</span>
+              </label>
+              <input
+                type="date"
+                value={form.fechaLimite}
+                onChange={(e) => setForm({ ...form, fechaLimite: e.target.value })}
+                className="w-full h-10 rounded border border-[#54585B]/30 px-3 text-sm text-[#191C1D] focus:outline-none focus:ring-2 focus:ring-[#7A1F2A]/30"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-semibold text-[#191C1D] mb-1.5">
+                Sede <span className="text-[#BA1A1A]">*</span>
+              </label>
+              <input
+                type="text"
+                value={form.sede}
+                onChange={(e) => setForm({ ...form, sede: e.target.value })}
+                placeholder="Ej. Polideportivo Municipal de Leganés"
+                className="w-full h-10 rounded border border-[#54585B]/30 px-3 text-sm text-[#191C1D] focus:outline-none focus:ring-2 focus:ring-[#7A1F2A]/30"
+              />
+            </div>
           </div>
-
-          {estiloSeleccionado && (
-            isPending ? (
-              <p className="text-sm text-[#54585B] flex items-center gap-2">
-                <span className="material-symbols-outlined animate-spin text-[#7A1F2A]">progress_activity</span>
-                Cargando katas…
-              </p>
-            ) : katas.length === 0 ? (
-              <p className="text-sm text-[#54585B]">No hay katas registrados para este estilo.</p>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                <section className="rounded-lg border border-[#54585B]/20 bg-white p-5">
-                  <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-3">
-                    Katas básicos ({basicKatas.length})
-                  </p>
-                  {basicKatas.length === 0 ? (
-                    <p className="text-sm text-[#54585B]">—</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {basicKatas.map((k: any, i: number) => (
-                        <div key={k.id} className="flex items-center gap-3 rounded border border-[#54585B]/10 px-3 py-2">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EAF5EF] text-[11px] font-bold text-[#2D6A4F]">
-                            {i + 1}
-                          </span>
-                          <p className="text-sm font-semibold text-[#191C1D]">{k.nombre}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-                <section className="rounded-lg border border-[#54585B]/20 bg-white p-5">
-                  <p className="text-xs font-bold uppercase tracking-wide text-[#54585B] mb-3">
-                    Katas superiores ({superiorKatas.length})
-                  </p>
-                  {superiorKatas.length === 0 ? (
-                    <p className="text-sm text-[#54585B]">—</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {superiorKatas.map((k: any, i: number) => (
-                        <div key={k.id} className="flex items-center gap-3 rounded border border-[#54585B]/10 px-3 py-2">
-                          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#F8E9EB] text-[11px] font-bold text-[#7A1F2A]">
-                            {i + 1}
-                          </span>
-                          <p className="text-sm font-semibold text-[#191C1D]">{k.nombre}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
-              </div>
-            )
-          )}
         </div>
-      )}
 
-      {/* ─── Temario ─── */}
-      {tab === "temario" && (
-        <div className="space-y-6">
-          <div>
-            <label className="text-sm font-semibold text-[#191C1D] block mb-2">Seleccionar Grado</label>
-            <select
-              value={gradoTemario}
-              onChange={(e) => setGradoTemario(e.target.value)}
-              className="h-10 rounded border border-[#54585B]/30 bg-white px-3 text-sm font-semibold text-[#191C1D]"
-            >
-              {GRADOS_TEMARIO.map((g) => (
-                <option key={g} value={g}>{g}</option>
-              ))}
-            </select>
-          </div>
+        {/* Grados */}
+        <div className="rounded-lg border border-[#54585B]/20 bg-white p-6">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[#54585B] mb-1">
+            Grados examinables <span className="text-[#BA1A1A]">*</span>
+          </h2>
+          <p className="text-xs text-[#54585B] mb-4">
+            Selecciona los grados a los que pueden optar los aspirantes en esta convocatoria.
+          </p>
 
-          {isPending ? (
+          {gradosDisponibles.length === 0 ? (
             <p className="text-sm text-[#54585B] flex items-center gap-2">
               <span className="material-symbols-outlined animate-spin text-[#7A1F2A]">progress_activity</span>
-              Cargando temario…
+              Cargando grados…
             </p>
-          ) : preguntas.length === 0 ? (
-            <div className="rounded-lg border border-[#54585B]/20 bg-white p-8 text-center">
-              <p className="text-sm text-[#54585B]">No hay preguntas registradas para este grado todavía.</p>
-            </div>
           ) : (
-            <div className="space-y-3">
-              {preguntas.map((p: any, i: number) => (
-                <div key={p.id} className="rounded-lg border border-[#54585B]/20 bg-white overflow-hidden">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {gradosDisponibles.map((g) => {
+                const selected = form.grados.includes(g);
+                return (
                   <button
-                    onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                    className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-[#F8F9FA] transition"
+                    key={g}
+                    type="button"
+                    onClick={() => toggleGrado(g)}
+                    className={`flex items-center gap-2 rounded border px-3 py-2.5 text-sm font-semibold text-left transition ${
+                      selected
+                        ? "border-[#7A1F2A] bg-[#F8E9EB] text-[#7A1F2A]"
+                        : "border-[#54585B]/20 bg-white text-[#54585B] hover:border-[#7A1F2A]/40 hover:text-[#191C1D]"
+                    }`}
                   >
-                    <span className="text-sm font-semibold text-[#191C1D]">
-                      {i + 1}. {p.pregunta}
+                    <span className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center ${
+                      selected ? "border-[#7A1F2A] bg-[#7A1F2A]" : "border-[#54585B]/40"
+                    }`}>
+                      {selected && (
+                        <span className="material-symbols-outlined text-white text-[12px]">check</span>
+                      )}
                     </span>
-                    <span className="material-symbols-outlined text-[20px] text-[#54585B] shrink-0">
-                      {expanded === p.id ? "expand_less" : "expand_more"}
-                    </span>
+                    {g}
                   </button>
-                  {expanded === p.id && (
-                    <div className="px-5 pb-4 border-t border-[#54585B]/10 bg-[#F8F9FA]">
-                      <p className="text-sm text-[#191C1D] mt-3 leading-relaxed">{p.respuesta}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
+
+          {form.grados.length > 0 && (
+            <p className="mt-3 text-xs font-semibold text-[#7A1F2A]">
+              {form.grados.length} grado{form.grados.length !== 1 ? "s" : ""} seleccionado{form.grados.length !== 1 ? "s" : ""}
+            </p>
+          )}
         </div>
-      )}
+
+        {/* Botones */}
+        <div className="flex justify-end gap-3 pb-8">
+          <Link
+            href="/director/convocatorias"
+            className="h-11 rounded border border-[#54585B]/30 px-6 text-sm font-bold text-[#54585B] hover:bg-[#F3F4F5] flex items-center transition"
+          >
+            Cancelar
+          </Link>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isPending}
+            className="h-11 rounded bg-[#7A1F2A] px-6 text-sm font-bold text-white hover:bg-[#5B0616] flex items-center gap-2 transition disabled:opacity-60"
+          >
+            {isPending ? (
+              <>
+                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                Creando…
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Crear convocatoria
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
