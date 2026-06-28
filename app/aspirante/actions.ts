@@ -626,7 +626,7 @@ export async function getMisResultados() {
       convocatorias ( nombre, fecha_examen, sede )
     `)
     .eq("practicante_id", practicante.id)
-    .in("estado", ["finalizada", "rechazada", "en_curso", "validada", "programada"])
+    .in("estado", ["finalizada", "rechazada", "validada", "programada"])
     .order("updated_at", { ascending: false });
 
   const resultadosPorSolicitud: any[] = [];
