@@ -64,6 +64,18 @@ export async function deleteKata(id: string) {
   const admin = createAdminClient();
   const { data: kata } = await admin.from("katas").select("nombre").eq("id", id).single();
 
+  // Verificar que el kata no tenga resultados asociados antes de eliminar
+  const { count: resultadosCount } = await admin
+    .from("resultados")
+    .select("id", { count: "exact", head: true })
+    .eq("kata_id", id);
+
+  if ((resultadosCount ?? 0) > 0) {
+    return {
+      error: `No se puede eliminar el kata "${kata?.nombre || id}" porque tiene ${resultadosCount} resultado(s) de examen asociado(s).`,
+    };
+  }
+
   const { error } = await admin.from("katas").delete().eq("id", id);
   if (error) return { error: error.message };
 
@@ -74,3 +86,4 @@ export async function deleteKata(id: string) {
   revalidatePath("/admin/katas");
   return { success: true };
 }
+

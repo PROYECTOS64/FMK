@@ -42,9 +42,21 @@ export async function updateEstilo(id: string, nombre: string, descripcion: stri
 
 export async function deleteEstilo(id: string) {
   const admin = createAdminClient();
-  
+
   // Obtener nombre antes de borrar para el log
   const { data: estilo } = await admin.from("estilos").select("nombre").eq("id", id).single();
+
+  // Verificar que el estilo no tenga practicantes asociados antes de eliminar
+  const { count: practicantesCount } = await admin
+    .from("practicantes")
+    .select("id", { count: "exact", head: true })
+    .eq("estilo_id", id);
+
+  if ((practicantesCount ?? 0) > 0) {
+    return {
+      error: `No se puede eliminar el estilo "${estilo?.nombre || id}" porque tiene ${practicantesCount} practicante(s) asociado(s).`,
+    };
+  }
 
   const { error } = await admin.from("estilos").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -56,3 +68,4 @@ export async function deleteEstilo(id: string) {
   revalidatePath("/admin/estilos");
   return { success: true };
 }
+
