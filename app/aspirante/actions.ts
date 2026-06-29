@@ -640,9 +640,12 @@ export async function getTemario(grado: string) {
 // ASP-31 / ASP-32 / ASP-33: Get results for the aspirante's solicitudes
 // ─────────────────────────────────────────────────────────────
 export async function getMisResultados() {
-  const { supabase, practicante } = await requireAspirante();
+  // requireAspirante() verifica la sesión y el rol, pero usamos adminClient
+  // para las queries para evitar que RLS bloquee solicitudes en estado finalizada
+  const { practicante } = await requireAspirante();
+  const adminClient = createAdminClient();
 
-  const { data: solicitudes } = await supabase
+  const { data: solicitudes } = await adminClient
     .from("solicitudes")
     .select(`
       id, estado, grado_solicitado, via_elegida, updated_at,
@@ -652,9 +655,7 @@ export async function getMisResultados() {
     .in("estado", ["finalizada", "rechazada", "validada", "programada"])
     .order("updated_at", { ascending: false });
 
-  const resultadosPorSolicitud: any[] = [];
-
-  const adminClient = createAdminClient();
+  const resultadosPorSolicitud: { [key: string]: unknown }[] = [];
 
   for (const sol of solicitudes ?? []) {
     const { data: resultados } = await adminClient
