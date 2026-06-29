@@ -2,6 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "@/lib/email/send";
+import { emailDocumentacionIncompleta, emailSolicitudValidada } from "@/lib/email/templates";
 
 /**
  * DIR-DOC-VIEW: Generate a signed URL for viewing a document.
@@ -172,7 +174,10 @@ export async function rechazarDocumento(documentoId: string, motivo: string) {
   // Create Notification
   const { data: solData } = await supabase
     .from("solicitudes")
-    .select("practicantes(user_id)")
+    .select(`
+      practicantes(user_id, nombre), 
+      convocatoria_id
+    `)
     .eq("id", doc.solicitud_id)
     .single() as any;
 
@@ -185,6 +190,23 @@ export async function rechazarDocumento(documentoId: string, motivo: string) {
       tipo: "documento",
       enlace: "/aspirante/solicitud",
     });
+    
+    // Send email
+    const { data: perfil } = await adminClient
+      .from("perfiles_usuario")
+      .select("nombre_visible, email")
+      .eq("user_id", solData.practicantes.user_id)
+      .maybeSingle();
+      
+    if (perfil?.email) {
+      const nombre = perfil.nombre_visible || solData.practicantes.nombre;
+      const html = emailDocumentacionIncompleta(
+        nombre,
+        [doc.tipo],
+        [motivo.trim()]
+      );
+      sendEmail(perfil.email, "Documentación Incompleta - FMK", html).catch(console.error);
+    }
   }
 
   // Audit
@@ -342,6 +364,44 @@ export async function marcarSolicitudValidada(solicitudId: string) {
     entity_id: solicitudId,
     details: { manual: true },
   });
+
+  // Notificar al aspirante
+  const { data: solData } = await supabase
+    .from("solicitudes")
+    .select(`
+      grado_solicitado,
+      practicantes(user_id, nombre),
+      convocatorias(fecha_examen, sede)
+    `)
+    .eq("id", solicitudId)
+    .single() as any;
+
+  if (solData?.practicantes?.user_id && solData?.convocatorias) {
+    await adminClient.from("notificaciones").insert({
+      user_id: solData.practicantes.user_id,
+      titulo: "Solicitud Validada",
+      mensaje: "Tu documentación ha sido revisada y validada correctamente.",
+      tipo: "solicitud",
+      enlace: "/aspirante/solicitud",
+    });
+
+    const { data: perfil } = await adminClient
+      .from("perfiles_usuario")
+      .select("nombre_visible, email")
+      .eq("user_id", solData.practicantes.user_id)
+      .maybeSingle();
+
+    if (perfil?.email) {
+      const nombre = perfil.nombre_visible || solData.practicantes.nombre;
+      const html = emailSolicitudValidada(
+        nombre,
+        solData.grado_solicitado,
+        solData.convocatorias.sede || "Sede por confirmar",
+        new Date(solData.convocatorias.fecha_examen)
+      );
+      sendEmail(perfil.email, "Solicitud Validada - FMK", html).catch(console.error);
+    }
+  }
 
   revalidatePath(`/director/solicitudes/${solicitudId}`);
   revalidatePath("/director/solicitudes");

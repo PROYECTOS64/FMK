@@ -2,6 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "@/lib/email/send";
+import { emailSolicitudRecibida } from "@/lib/email/templates";
 
 // ─────────────────────────────────────────────────────────────
 // Helper: return the current aspirante's supabase client + practicante row
@@ -435,6 +437,27 @@ export async function enviarSolicitud(solicitudId: string, viaElegidaParam?: str
       enlace: "/director/solicitudes"
     }));
     await admin.from("notificaciones").insert(notifs);
+  }
+
+  // Enviar email transaccional al aspirante
+  const { data: perfil } = await admin
+    .from("perfiles_usuario")
+    .select("nombre_visible, email")
+    .eq("user_id", practicante.user_id || sol.practicante_id)
+    .maybeSingle();
+
+  // Retrieve convocatoria to get the exam date
+  const { data: conv } = await admin
+    .from("convocatorias")
+    .select("fecha_examen")
+    .eq("id", sol.convocatoria_id)
+    .single();
+
+  if (perfil?.email && conv?.fecha_examen) {
+    const nombre = perfil.nombre_visible || practicante.nombre;
+    const html = emailSolicitudRecibida(nombre, sol.grado_solicitado, new Date(conv.fecha_examen));
+    // Ejecutar en segundo plano para no bloquear
+    sendEmail(perfil.email, "Solicitud de Examen Recibida - FMK", html).catch(console.error);
   }
 
   revalidatePath("/aspirante");

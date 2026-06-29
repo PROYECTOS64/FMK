@@ -2,6 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sendEmail } from "@/lib/email/send";
+import { emailResultadoFinal } from "@/lib/email/templates";
 
 /**
  * Helper para verificar que el usuario es director_fmk
@@ -222,7 +224,11 @@ export async function publicarResultadosProvisionales(convocatoriaId: string) {
   // Create notifications for all aspirantes in this convocatoria
   const { data: solicitudes } = await supabase
     .from("solicitudes")
-    .select("practicantes(user_id)")
+    .select(`
+      id,
+      grado_solicitado,
+      practicantes(user_id, nombre)
+    `)
     .eq("convocatoria_id", convocatoriaId) as any;
 
   if (solicitudes && solicitudes.length > 0) {
@@ -238,6 +244,35 @@ export async function publicarResultadosProvisionales(convocatoriaId: string) {
       }));
     if (notifications.length > 0) {
       await adminClient.from("notificaciones").insert(notifications);
+    }
+
+    // Send emails
+    for (const sol of solicitudes) {
+      if (!sol.practicantes?.user_id) continue;
+
+      const { data: perfil } = await adminClient
+        .from("perfiles_usuario")
+        .select("nombre_visible, email")
+        .eq("user_id", sol.practicantes.user_id)
+        .maybeSingle();
+
+      if (!perfil?.email) continue;
+
+      // Determine if APTO based on Bloque Comun and Especifico
+      const { data: resVal } = await adminClient
+        .from("resultados")
+        .select("bloque, calificacion")
+        .eq("solicitud_id", sol.id);
+      
+      const resultList = resVal || [];
+      const comun = resultList.find((r: any) => r.bloque === "comun")?.calificacion;
+      const espec = resultList.find((r: any) => r.bloque === "especifico")?.calificacion;
+      const esAptoGlobal = comun === "apto" && (espec === "apto" || espec === undefined);
+
+      const nombre = perfil.nombre_visible || sol.practicantes.nombre;
+      const html = emailResultadoFinal(nombre, sol.grado_solicitado, esAptoGlobal);
+      
+      sendEmail(perfil.email, "Resultado de Examen (Provisional) - FMK", html).catch(console.error);
     }
   }
 
